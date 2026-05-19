@@ -171,7 +171,7 @@
 
 <script>
 const TOTAL = 10;
-const SHOW_MS = 3000;
+const SHOW_MS = 1000;
 
 const state = {
   problems: [],
@@ -212,7 +212,7 @@ function render() {
     app.innerHTML = `
       <div class="start-screen">
         <h1 style="font-size: 28px; color: #e2e8f0; margin-bottom: 16px;">暗算トレーニング</h1>
-        <p>2桁 × 2桁の問題が10問。<br>問題は3秒だけ表示されます。<br>表示中でも回答OK。</p>
+        <p>2桁 × 2桁の問題が10問。<br>問題は1秒だけ表示されます。<br>表示中でも回答OK。</p>
         <button id="startBtn" class="next-btn">スタート</button>
       </div>
     `;
@@ -247,7 +247,7 @@ function render() {
       </div>
       <div class="progress">問題 ${state.current + 1} / ${TOTAL}　|　正解 ${state.correct}</div>
       <div class="problem" id="problemBox">${p.a} × ${p.b}</div>
-      <div class="timer" id="timer">3 秒で消えます</div>
+      <div class="timer" id="timer">1 秒で消えます</div>
       <div class="input-wrap">
         <input type="number" id="answerInput" placeholder="答え" autofocus />
       </div>
