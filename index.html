@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗算トレーニング</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .container {
+    width: 100%;
+    max-width: 480px;
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  h1 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  .progress {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 24px;
+  }
+  .problem {
+    font-size: 56px;
+    font-weight: 700;
+    text-align: center;
+    padding: 48px 16px;
+    background: #0f172a;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+    min-height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .problem.hidden { color: #1e293b; }
+  .timer {
+    text-align: center;
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 16px;
+    height: 20px;
+  }
+  .input-wrap {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  input[type="number"] {
+    flex: 1;
+    padding: 16px;
+    font-size: 24px;
+    text-align: center;
+    background: #0f172a;
+    border: 2px solid #334155;
+    border-radius: 8px;
+    color: #e2e8f0;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"]:focus { border-color: #3b82f6; }
+  input:disabled { opacity: 0.6; }
+  button {
+    padding: 16px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover:not(:disabled) { background: #2563eb; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #334155;
+  }
+  button.secondary:hover:not(:disabled) { background: #0f172a; color: #e2e8f0; }
+  .feedback {
+    text-align: center;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .feedback.correct { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+  .feedback.wrong { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+  .next-btn { width: 100%; }
+  .result {
+    text-align: center;
+  }
+  .result .score {
+    font-size: 64px;
+    font-weight: 700;
+    color: #4ade80;
+    margin: 16px 0 4px;
+  }
+  .result .time {
+    font-size: 28px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 8px 0 4px;
+  }
+  .result .label { color: #94a3b8; margin-bottom: 16px; font-size: 14px; }
+  .result-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 24px;
+  }
+  .start-screen {
+    text-align: center;
+    padding: 24px 0;
+  }
+  .start-screen p {
+    color: #94a3b8;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .header h1 { margin-bottom: 0; }
+  .home-link {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .home-link:hover { color: #e2e8f0; background: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="app"></div>
+</div>
+
+<script>
+const TOTAL = 10;
+const SHOW_MS = 3000;
+
+const state = {
+  problems: [],
+  current: 0,
+  correct: 0,
+  totalMs: 0,
+  phase: 'start', // start | solve | feedback | done
+  lastAnswer: null,
+  lastCorrect: null,
+  startTime: 0,
+  hideTimer: null,
+  tickTimer: null,
+};
+
+function rand2digit() {
+  return Math.floor(Math.random() * 90) + 10;
+}
+
+function generateProblems() {
+  state.problems = [];
+  for (let i = 0; i < TOTAL; i++) {
+    const a = rand2digit();
+    const b = rand2digit();
+    state.problems.push({ a, b, answer: a * b });
+  }
+}
+
+function formatTime(ms) {
+  const s = ms / 1000;
+  return `${s.toFixed(1)} 秒`;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  const p = state.problems[state.current];
+
+  if (state.phase === 'start') {
+    app.innerHTML = `
+      <div class="start-screen">
+        <h1 style="font-size: 28px; color: #e2e8f0; margin-bottom: 16px;">暗算トレーニング</h1>
+        <p>2桁 × 2桁の問題が10問。<br>問題は3秒だけ表示されます。<br>表示中でも回答OK。</p>
+        <button id="startBtn" class="next-btn">スタート</button>
+      </div>
+    `;
+    document.getElementById('startBtn').onclick = start;
+    return;
+  }
+
+  if (state.phase === 'done') {
+    app.innerHTML = `
+      <div class="result">
+        <h1>結果</h1>
+        <div class="score">${state.correct} / ${TOTAL}</div>
+        <div class="label">正解数</div>
+        <div class="time">${formatTime(state.totalMs)}</div>
+        <div class="label">合計回答時間（${formatTime(state.totalMs / TOTAL)} / 問）</div>
+        <div class="result-buttons">
+          <button id="restartBtn">もう一度</button>
+          <button id="homeBtn" class="secondary">ホームに戻る</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('restartBtn').onclick = start;
+    document.getElementById('homeBtn').onclick = goHome;
+    return;
+  }
+
+  if (state.phase === 'solve') {
+    app.innerHTML = `
+      <div class="header">
+        <h1>暗算トレーニング</h1>
+        <button class="home-link" id="homeLink">← ホーム</button>
+      </div>
+      <div class="progress">問題 ${state.current + 1} / ${TOTAL}　|　正解 ${state.correct}</div>
+      <div class="problem" id="problemBox">${p.a} × ${p.b}</div>
+      <div class="timer" id="timer">3 秒で消えます</div>
+      <div class="input-wrap">
+        <input type="number" id="answerInput" placeholder="答え" autofocus />
+      </div>
+      <button id="submitBtn" class="next-btn">回答</button>
+    `;
+    const input = document.getElementById('answerInput');
+    input.focus();
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') submit();
+    });
+    document.getElementById('submitBtn').onclick = submit;
+    document.getElementById('homeLink').onclick = goHome;
+    return;
+  }
+
+  if (state.phase === 'feedback') {
+    const isCorrect = state.lastCorrect;
+    app.innerHTML = `
+      <div class="header">
+        <h1>暗算トレーニング</h1>
+        <button class="home-link" id="homeLink">← ホーム</button>
+      </div>
+      <div class="progress">問題 ${state.current + 1} / ${TOTAL}　|　正解 ${state.correct}</div>
+      <div class="problem hidden">?</div>
+      <div class="feedback ${isCorrect ? 'correct' : 'wrong'}">
+        ${isCorrect
+          ? `✓ 正解！　${p.a} × ${p.b} = ${p.answer}`
+          : `✗ 不正解　${p.a} × ${p.b} = ${p.answer}（あなたの答え: ${state.lastAnswer}）`}
+      </div>
+      <button id="nextBtn" class="next-btn">${state.current + 1 < TOTAL ? '次の問題' : '結果を見る'}</button>
+    `;
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.focus();
+    nextBtn.onclick = next;
+    document.getElementById('homeLink').onclick = goHome;
+    document.addEventListener('keydown', enterToNext);
+  }
+}
+
+function enterToNext(e) {
+  if (e.key === 'Enter') {
+    document.removeEventListener('keydown', enterToNext);
+    next();
+  }
+}
+
+function clearProblemTimers() {
+  if (state.hideTimer) { clearTimeout(state.hideTimer); state.hideTimer = null; }
+  if (state.tickTimer) { clearInterval(state.tickTimer); state.tickTimer = null; }
+}
+
+function start() {
+  generateProblems();
+  state.current = 0;
+  state.correct = 0;
+  state.totalMs = 0;
+  showProblem();
+}
+
+function goHome() {
+  clearProblemTimers();
+  document.removeEventListener('keydown', enterToNext);
+  state.phase = 'start';
+  render();
+}
+
+function showProblem() {
+  state.phase = 'solve';
+  state.startTime = performance.now();
+  render();
+
+  let remaining = SHOW_MS / 1000;
+  state.tickTimer = setInterval(() => {
+    remaining -= 1;
+    const t = document.getElementById('timer');
+    if (t && remaining > 0) {
+      t.textContent = `${remaining} 秒で消えます`;
+    }
+  }, 1000);
+
+  state.hideTimer = setTimeout(() => {
+    clearProblemTimers();
+    const box = document.getElementById('problemBox');
+    if (box) {
+      box.classList.add('hidden');
+      box.textContent = '?';
+    }
+    const t = document.getElementById('timer');
+    if (t) t.textContent = '';
+  }, SHOW_MS);
+}
+
+function submit() {
+  const input = document.getElementById('answerInput');
+  if (!input) return;
+  const val = input.value.trim();
+  if (val === '') return;
+  const ans = parseInt(val, 10);
+  const p = state.problems[state.current];
+
+  state.totalMs += performance.now() - state.startTime;
+  clearProblemTimers();
+
+  state.lastAnswer = ans;
+  state.lastCorrect = ans === p.answer;
+  if (state.lastCorrect) state.correct += 1;
+  state.phase = 'feedback';
+  render();
+}
+
+function next() {
+  document.removeEventListener('keydown', enterToNext);
+  state.current += 1;
+  if (state.current >= TOTAL) {
+    state.phase = 'done';
+    render();
+  } else {
+    showProblem();
+  }
+}
+
+render();
+</script>
+</body>
+</html>
