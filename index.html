@@ -283,14 +283,6 @@ function render() {
     nextBtn.focus();
     nextBtn.onclick = next;
     document.getElementById('homeLink').onclick = goHome;
-    document.addEventListener('keydown', enterToNext);
-  }
-}
-
-function enterToNext(e) {
-  if (e.key === 'Enter') {
-    document.removeEventListener('keydown', enterToNext);
-    next();
   }
 }
 
@@ -309,7 +301,6 @@ function start() {
 
 function goHome() {
   clearProblemTimers();
-  document.removeEventListener('keydown', enterToNext);
   state.phase = 'start';
   render();
 }
@@ -359,7 +350,6 @@ function submit() {
 }
 
 function next() {
-  document.removeEventListener('keydown', enterToNext);
   state.current += 1;
   if (state.current >= TOTAL) {
     state.phase = 'done';
