@@ -255,9 +255,6 @@ function render() {
     `;
     const input = document.getElementById('answerInput');
     input.focus();
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') submit();
-    });
     document.getElementById('submitBtn').onclick = submit;
     document.getElementById('homeLink').onclick = goHome;
     return;
@@ -279,9 +276,7 @@ function render() {
       </div>
       <button id="nextBtn" class="next-btn">${state.current + 1 < TOTAL ? '次の問題' : '結果を見る'}</button>
     `;
-    const nextBtn = document.getElementById('nextBtn');
-    nextBtn.focus();
-    nextBtn.onclick = next;
+    document.getElementById('nextBtn').onclick = next;
     document.getElementById('homeLink').onclick = goHome;
   }
 }
@@ -358,6 +353,26 @@ function next() {
     showProblem();
   }
 }
+
+// One Enter press = one action. After acting we "disarm" until the key is
+// released (keyup), so a single press can never cascade across phases
+// (e.g. submit an answer AND skip to the next problem).
+let enterArmed = true;
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (!enterArmed) return;
+  enterArmed = false;
+  if (state.phase === 'start') start();
+  else if (state.phase === 'solve') submit();
+  else if (state.phase === 'feedback') next();
+  else if (state.phase === 'done') start();
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'Enter') enterArmed = true;
+});
 
 render();
 </script>
